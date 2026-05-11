@@ -5,11 +5,11 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import type { SearchLeadDto } from '../types/lead.types';
+import type { LeadCnpjResponse, SearchLeadDto } from '../types/lead.types';
 
 @Injectable()
 export class LeadService {
-  async searchByCnpj(dto: SearchLeadDto) {
+  async searchByCnpj(dto: SearchLeadDto): Promise<LeadCnpjResponse> {
     const rawCnpj = dto.cnpj?.trim() ?? '';
     const cnpj = rawCnpj.replaceAll(/\D/g, '');
     if (!cnpj) {
@@ -48,6 +48,6 @@ export class LeadService {
       );
     }
 
-    return response.json();
+    return response.json() as Promise<LeadCnpjResponse>;
   }
 }
