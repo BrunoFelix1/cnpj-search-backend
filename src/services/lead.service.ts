@@ -5,11 +5,21 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import type { LeadCnpjResponse, SearchLeadDto } from '../types/lead.types';
+import { mapLeadCnpjToDashboard } from '../mappers/lead.mapper';
+import type {
+  LeadCnpjResponse,
+  LeadDashboardResponse,
+  SearchLeadDto,
+} from '../types/lead.types';
 
 @Injectable()
 export class LeadService {
-  async searchByCnpj(dto: SearchLeadDto): Promise<LeadCnpjResponse> {
+  private static readonly cache = new Map<
+    string,
+    { data: LeadDashboardResponse; expiresAt: number }
+  >();
+
+  async searchByCnpj(dto: SearchLeadDto): Promise<LeadDashboardResponse> {
     const rawCnpj = dto.cnpj?.trim() ?? '';
     const cnpj = rawCnpj.replaceAll(/\D/g, '');
     if (!cnpj) {
@@ -17,6 +27,11 @@ export class LeadService {
     }
     if (cnpj.length !== 14) {
       throw new BadRequestException('cnpj must have 14 digits');
+    }
+
+    const cached = this.getCached(cnpj);
+    if (cached) {
+      return cached;
     }
 
     const baseUrl = process.env.CNPJ_API_URL;
@@ -48,6 +63,30 @@ export class LeadService {
       );
     }
 
-    return response.json() as Promise<LeadCnpjResponse>;
+    const payload = (await response.json()) as LeadCnpjResponse;
+    const mapped = mapLeadCnpjToDashboard(payload);
+    this.setCached(cnpj, mapped);
+    return mapped;
+  }
+
+  private getCached(cnpj: string): LeadDashboardResponse | null {
+    const cached = LeadService.cache.get(cnpj);
+    if (!cached) {
+      return null;
+    }
+    if (cached.expiresAt < Date.now()) {
+      LeadService.cache.delete(cnpj);
+      return null;
+    }
+    return cached.data;
+  }
+
+  private setCached(cnpj: string, data: LeadDashboardResponse): void {
+    const ttl = Number(process.env.CNPJ_CACHE_TTL_MS ?? 300000);
+    const ttlMs = Number.isFinite(ttl) && ttl > 0 ? ttl : 300000;
+    LeadService.cache.set(cnpj, {
+      data,
+      expiresAt: Date.now() + ttlMs,
+    });
   }
 }

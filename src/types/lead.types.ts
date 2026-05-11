@@ -91,3 +91,80 @@ export type LeadCnpjResponse = {
   descricao_motivo_situacao_cadastral: string;
   descricao_identificador_matriz_filial: string;
 };
+
+export type LeadDashboardCompany = {
+  corporateName: string;
+  tradeName: string;
+  formattedCnpj: string;
+  legalNature: string;
+  companySize: string;
+  branchType: string;
+  openingDate: string;
+  yearsInBusiness: number;
+};
+
+export type LeadDashboardStatus = {
+  registrationStatus: 'ACTIVE' | 'CLOSED' | 'SUSPENDED' | 'UNKNOWN';
+  statusColor: string;
+  statusDate: string;
+  statusReason: string;
+};
+
+export type LeadDashboardLocation = {
+  formattedAddress: string;
+  city: string;
+  state: string;
+  formattedZipCode: string;
+};
+
+export type LeadDashboardContacts = {
+  formattedPhone: string;
+  email: string;
+  hasContactInfo: boolean;
+};
+
+export type LeadDashboardMainActivity = {
+  formattedCode: string;
+  description: string;
+};
+
+export type LeadDashboardSecondaryActivity = {
+  code: string;
+  description: string;
+};
+
+export type LeadDashboardPartner = {
+  name: string;
+  role: string;
+  ageRange: string;
+  entryDate: string;
+};
+
+export type LeadDashboardTaxRegimeItem = {
+  year: number;
+  taxRegime: string;
+};
+
+export type LeadDashboardMetrics = {
+  yearsInBusiness: number;
+  partnersCount: number;
+  secondaryActivitiesCount: number;
+  shareCapital: string;
+  isActive: boolean;
+};
+
+export type LeadDashboardResponse = {
+  company: LeadDashboardCompany;
+  status: LeadDashboardStatus;
+  location: LeadDashboardLocation;
+  contacts: LeadDashboardContacts;
+  mainActivity: LeadDashboardMainActivity;
+  secondaryActivities: LeadDashboardSecondaryActivity[];
+  partners: LeadDashboardPartner[];
+  taxRegime: LeadDashboardTaxRegimeItem[];
+  metrics: LeadDashboardMetrics;
+  insights: string[];
+  secondaryActivitiesCount: number;
+  partnersCount: number;
+  currentTaxRegime: string;
+};
