@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { DatabaseModule } from './modules/database.module';
 import { LeadModule } from './modules/lead.module';
 
 @Module({
@@ -9,7 +8,6 @@ import { LeadModule } from './modules/lead.module';
       isGlobal: true,
       envFilePath: ['.env', '.ENV'],
     }),
-    DatabaseModule,
     LeadModule,
   ],
 })

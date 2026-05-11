@@ -10,5 +10,6 @@ Web application to consult company information through CNPJ searches, providing 
 ## Funcionalidades que poderiam ser implementadas com mais tempo
 
 - Testes Unitários
+- Persistência dos dados em um banco, caso usasse as informações do Lead para outra coisa
 - Autenticação
 - Filas pra processamento dos dados que estão sendo agregados pela API, se a regra de negócio viesse a aumentar, no caso
