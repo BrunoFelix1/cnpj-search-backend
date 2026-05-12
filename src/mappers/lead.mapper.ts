@@ -200,6 +200,8 @@ export const mapLeadCnpjToDashboard = (
       city: safeText(response.municipio),
       state: safeText(response.uf),
       formattedZipCode: formatZipCode(response.cep),
+      latitude: null,
+      longitude: null,
     },
     contacts: {
       formattedPhone: formattedPhonePrimary,

@@ -6,6 +6,7 @@ Web application to consult company information through CNPJ searches, providing 
 
 - Estou usando synchronize true por enquanto, pra produção seria ideal o uso de migrations.
 - POST vai salvar no banco e retornar o resultado.
+- Latitude e Longitude com Geocoding
 
 ## Funcionalidades que poderiam ser implementadas com mais tempo
 

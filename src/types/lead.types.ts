@@ -115,6 +115,8 @@ export type LeadDashboardLocation = {
   city: string;
   state: string;
   formattedZipCode: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type LeadDashboardContacts = {

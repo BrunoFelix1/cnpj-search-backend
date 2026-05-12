@@ -31,6 +31,13 @@ export class LeadService {
 
     const cached = this.getCached(cnpj);
     if (cached) {
+      if (cached.location.latitude && cached.location.longitude) {
+        return cached;
+      }
+      const coordinates = await this.fetchCoordinatesFromCache(cnpj, cached);
+      if (coordinates) {
+        return coordinates;
+      }
       return cached;
     }
 
@@ -65,8 +72,134 @@ export class LeadService {
 
     const payload = (await response.json()) as LeadCnpjResponse;
     const mapped = mapLeadCnpjToDashboard(payload);
+    const coordinates = await this.fetchCoordinates(payload);
+    if (coordinates) {
+      mapped.location.latitude = coordinates.latitude;
+      mapped.location.longitude = coordinates.longitude;
+    }
     this.setCached(cnpj, mapped);
     return mapped;
+  }
+
+  private async fetchCoordinates(
+    data: LeadCnpjResponse,
+  ): Promise<{ latitude: number; longitude: number } | null> {
+    const baseUrl =
+      process.env.GEOCODE_API_URL ??
+      'https://nominatim.openstreetmap.org/search';
+    const queries = this.buildGeocodeQueries(data);
+    for (const query of queries) {
+      const coords = await this.getCoordinatesFromQuery(baseUrl, query);
+      if (coords) {
+        return coords;
+      }
+    }
+    return null;
+  }
+
+  private buildGeocodeQueries(data: LeadCnpjResponse): string[] {
+    const mainParts = [
+      data.descricao_tipo_de_logradouro,
+      data.logradouro,
+      data.numero,
+      data.bairro,
+      data.municipio,
+      data.uf,
+      data.cep,
+    ]
+      .map((value) => (value ?? '').toString().trim())
+      .filter(Boolean);
+    const mainQuery = [...mainParts, 'Brasil'].join(', ');
+    const fallbackQuery = [data.municipio, data.uf, 'Brasil']
+      .map((value) => (value ?? '').toString().trim())
+      .filter(Boolean)
+      .join(', ');
+    return [mainQuery, fallbackQuery].filter(Boolean);
+  }
+
+  private async getCoordinatesFromQuery(
+    baseUrl: string,
+    query: string,
+  ): Promise<{ latitude: number; longitude: number } | null> {
+    if (!query) {
+      return null;
+    }
+
+    const url = new URL(baseUrl);
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('q', query);
+
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'cnpj-search-backend/1.0',
+        },
+      });
+      if (!response.ok) {
+        return null;
+      }
+      const payload = (await response.json()) as Array<
+        Partial<{ lat: string; lon: string }>
+      >;
+      const first = payload[0];
+      if (!first?.lat || !first?.lon) {
+        return null;
+      }
+      const latitude = Number(first.lat);
+      const longitude = Number(first.lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+      return { latitude, longitude };
+    } catch (error) {
+      console.error('Error fetching geocode data:', error);
+      return null;
+    }
+  }
+
+  private async fetchCoordinatesFromCache(
+    cnpj: string,
+    cached: LeadDashboardResponse,
+  ): Promise<LeadDashboardResponse | null> {
+    const baseUrl = process.env.CNPJ_API_URL;
+    if (!baseUrl) {
+      return null;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/${cnpj}`, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'cnpj-search-backend/1.0',
+        },
+      });
+    } catch {
+      return null;
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as LeadCnpjResponse;
+    const coordinates = await this.fetchCoordinates(payload);
+    if (!coordinates) {
+      return null;
+    }
+
+    const updated: LeadDashboardResponse = {
+      ...cached,
+      location: {
+        ...cached.location,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+      },
+    };
+    this.setCached(cnpj, updated);
+    return updated;
   }
 
   private getCached(cnpj: string): LeadDashboardResponse | null {
