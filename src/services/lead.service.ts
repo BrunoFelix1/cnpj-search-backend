@@ -87,9 +87,9 @@ export class LeadService {
     const baseUrl =
       process.env.GEOCODE_API_URL ??
       'https://nominatim.openstreetmap.org/search';
-    const queries = this.buildGeocodeQueries(data);
-    for (const query of queries) {
-      const coords = await this.getCoordinatesFromQuery(baseUrl, query);
+    const requests = this.buildGeocodeRequests(data);
+    for (const request of requests) {
+      const coords = await this.getCoordinatesFromQuery(baseUrl, request);
       if (coords) {
         return coords;
       }
@@ -97,38 +97,73 @@ export class LeadService {
     return null;
   }
 
-  private buildGeocodeQueries(data: LeadCnpjResponse): string[] {
-    const mainParts = [
+  private buildGeocodeRequests(
+    data: LeadCnpjResponse,
+  ): Array<{ q?: string; params?: Record<string, string> }> {
+    const streetLine = [
       data.descricao_tipo_de_logradouro,
       data.logradouro,
       data.numero,
-      data.bairro,
-      data.municipio,
-      data.uf,
-      data.cep,
     ]
       .map((value) => (value ?? '').toString().trim())
-      .filter(Boolean);
-    const mainQuery = [...mainParts, 'Brasil'].join(', ');
-    const fallbackQuery = [data.municipio, data.uf, 'Brasil']
-      .map((value) => (value ?? '').toString().trim())
       .filter(Boolean)
-      .join(', ');
-    return [mainQuery, fallbackQuery].filter(Boolean);
+      .join(' ');
+    const city = (data.municipio ?? '').toString().trim();
+    const state = (data.uf ?? '').toString().trim();
+    const postalcode = (data.cep ?? '').toString().trim();
+
+    const structuredParams: Record<string, string> = {
+      country: 'Brazil',
+    };
+    if (streetLine) {
+      structuredParams.street = streetLine;
+    }
+    if (city) {
+      structuredParams.city = city;
+    }
+    if (state) {
+      structuredParams.state = state;
+    }
+    if (postalcode) {
+      structuredParams.postalcode = postalcode;
+    }
+
+    const fallbackParts = [city, state, 'Brazil']
+      .map((value) => (value ?? '').toString().trim())
+      .filter(Boolean);
+    const fallbackQuery = fallbackParts.join(', ');
+
+    const requests: Array<{ q?: string; params?: Record<string, string> }> = [];
+    if (Object.keys(structuredParams).length > 1) {
+      requests.push({ params: structuredParams });
+    }
+    if (fallbackQuery) {
+      requests.push({ q: fallbackQuery });
+    }
+    return requests;
   }
 
   private async getCoordinatesFromQuery(
     baseUrl: string,
-    query: string,
+    request: { q?: string; params?: Record<string, string> },
   ): Promise<{ latitude: number; longitude: number } | null> {
-    if (!query) {
+    if (!request.q && !request.params) {
       return null;
     }
 
     const url = new URL(baseUrl);
     url.searchParams.set('format', 'json');
     url.searchParams.set('limit', '1');
-    url.searchParams.set('q', query);
+    if (request.q) {
+      url.searchParams.set('q', request.q);
+    }
+    if (request.params) {
+      for (const [key, value] of Object.entries(request.params)) {
+        if (value) {
+          url.searchParams.set(key, value);
+        }
+      }
+    }
 
     try {
       const response = await fetch(url.toString(), {
