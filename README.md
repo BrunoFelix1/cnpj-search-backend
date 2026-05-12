@@ -39,7 +39,7 @@ npm run start:dev
 
 O servidor inicia em http://localhost:3000 (ou na porta definida em PORT).
 
-## Endpoint para listar os dados que sã tratados e depois enviados ao frontend
+## Endpoint para listar os dados que são tratados e depois enviados ao frontend
 
 POST em {BASE_URL}/leads/search
 
